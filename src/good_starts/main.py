@@ -1,5 +1,5 @@
 from pathlib import Path
-import os
+from typing import Union
 
 test_struct = '''
 dir1
@@ -24,7 +24,25 @@ dir4
 file2.qmd
 '''
 
-def extract_paths(lines,root_dir=Path.cwd()):
+def extract_paths(lines: list[str],root_dir: Union[str,Path]=Path.cwd()):
+    """
+    Extracts a list of paths from a list of directory and file names with indentation indicating hierarchy.
+
+    Parameters
+    ----------
+    lines : list of str
+        A list of strings representing directory and file names, where indentation indicates hierarchy.
+    root_dir : Union[str, Path], optional
+        The root directory to which the paths are relative. Defaults to the current working directory.
+
+    Returns
+    -------
+    list of Path
+        A list of Path objects representing the full paths.
+    """
+
+    if isinstance(root_dir, str):
+        root_dir = Path(root_dir)
 
     paths = []
     
@@ -32,7 +50,7 @@ def extract_paths(lines,root_dir=Path.cwd()):
 
         name = Path(line.strip())
 
-        indent = char_counter(line)
+        indent = indent_counter(line)
 
         if indent == 0:
             paths += [root_dir/name]
@@ -40,40 +58,43 @@ def extract_paths(lines,root_dir=Path.cwd()):
             # At this point paths dimention is i-1
             for j in range(i-1,-1,-1):
                 previous_line = lines[j]
-                previous_indent = char_counter(previous_line)
+                previous_indent = indent_counter(previous_line)
                 if not '.' in previous_line and previous_indent == indent-1:
                     paths += [paths[j]/name]
                     break #Find the first one
 
     return paths
 
+def indent_counter(line: str, char_list: list[str] = [' ']) -> int:
+    """
+    Counts the number of leading characters in a string that match any character in the given list.
 
-def find_blocks(lines):
-    basic_indent = char_counter(lines[0])
-    
-    block_indices = []
+    Parameters
+    ----------
+    line : str
+        The input string in which leading characters are to be counted.
+    char_list : list of str, optional
+        A list of characters to be counted as indentation characters. Defaults to a list containing a single space character [' '].
 
-    in_block = False
+    Returns
+    -------
+    int
+        The count of leading characters in the input string that match any character in `char_list`.
 
-    for i in range(1,len(lines)):
+    Examples
+    --------
+    >>> indent_counter("    Hello, world!")
+    4
 
-        indent = indent_counter(lines[i])
+    >>> indent_counter("\t\tHello, world!", char_list=['\t'])
+    2
 
-        if indent-basic_indent != 0:
-            if not in_block:
-                start_index = i
-                in_block = True
-        else:
-            if in_block:
-                in_block = False
-                block_indices += [[start_index,i]]
+    >>> indent_counter("  \t Hello, world!", char_list=[' ', '\t'])
+    3
 
-    # Block open at the last line
-    if in_block: block_indices += [[start_index,len(lines)]]        
-
-    return block_indices
-
-def indent_counter(line,char_list=[' ']):
+    >>> indent_counter("Hello, world!")
+    0
+    """
     count = 0
     for char in line:
         if char in char_list: 
